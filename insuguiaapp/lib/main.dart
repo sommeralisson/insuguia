@@ -1,14 +1,33 @@
 import 'package:flutter/material.dart';
-import 'screens/welcome_screen.dart';
+// Importa as duas telas que vamos usar nas rotas
 import 'screens/login_screen.dart';
-import 'screens/registration_screen.dart';
-import 'screens/classification_screen.dart';
-import 'screens/protocol_screen.dart';
-import 'screens/prescription_screen.dart';
-import 'screens/follow_up_screen.dart';
-import 'screens/discharge_screen.dart';
+import 'screens/cadastro_medico_screen.dart';
 
-void main() {
+// Imports necessários para o SQLite em Desktop
+import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'dart:io' show Platform;
+
+// 1. Marque a função main() como 'async'
+void main() async {
+  // 2. Garante que a "ponte" do Flutter esteja pronta
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // 3. Bloco de inicialização do FFI para Desktop (Windows, Linux, macOS)
+  //    (Certifique-se de ter 'sqflite_common_ffi' no seu pubspec.yaml)
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    try {
+      // Inicializa o FFI
+      sqfliteFfiInit();
+      // Define a factory do banco de dados para a versão FFI
+      databaseFactory = databaseFactoryFfi;
+    } catch (e) {
+      // Se algo der errado aqui, veremos no console.
+      debugPrint("Erro ao inicializar o FFI do sqflite: $e");
+    }
+  }
+
+  // 4. Executa o aplicativo
   runApp(const MyApp());
 }
 
@@ -18,57 +37,16 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Protótipo de Prescrição',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        // Estilo geral dos botões
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue.shade700,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        ),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        ),
-        // Estilo para os cards
-        cardTheme: CardThemeData(
-          elevation: 2,
-          margin: const EdgeInsets.symmetric(vertical: 8.0),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        // Estilo para campos de texto
-        inputDecorationTheme: InputDecorationTheme(
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 12,
-          ),
-        ),
-      ),
-      // Rota inicial do app
+      debugShowCheckedModeBanner: false, // Remove o banner "Debug"
+      title: 'InsuGuia',
+      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.teal),
+
+      // Usar rotas nomeadas é uma prática melhor que 'home:'
+      // para permitir a navegação entre telas.
       initialRoute: '/',
-      // Definição de todas as rotas (telas)
       routes: {
-        '/': (context) => const WelcomeScreen(),
-        '/login': (context) => const LoginScreen(),
-        '/cadastro': (context) => const RegistrationScreen(),
-        '/classificacao': (context) => const ClassificationScreen(),
-        '/protocolo': (context) => const ProtocolScreen(),
-        '/prescricao': (context) => const PrescriptionScreen(),
-        '/acompanhamento': (context) => const FollowUpScreen(),
-        '/alta': (context) => const DischargeScreen(),
+        '/': (context) => const LoginScreen(),
+        '/cadastro': (context) => const CadastroMedicoScreen(),
       },
     );
   }
