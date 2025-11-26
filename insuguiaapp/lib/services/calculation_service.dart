@@ -2,72 +2,117 @@ import 'dart:math';
 
 class CalcResult {
   final double tdd;
-  final double basal;
-  final double prandial;
   final double basalRounded;
-  final double prandialPerMealRounded;
-  final int fs;
+  final double prandialTotal;
+  final double prandialRef;
+  final double step;
+  final int fatorSensibilidade;
+
+  final String description;
 
   CalcResult({
     required this.tdd,
-    required this.basal,
-    required this.prandial,
     required this.basalRounded,
-    required this.prandialPerMealRounded,
-    required this.fs,
+    required this.prandialTotal,
+    required this.prandialRef,
+    required this.step,
+    required this.fatorSensibilidade,
+    this.description = '',
   });
 }
 
 class CalculationService {
-  static int fatorSensibilidadeCoef(String sensibilidade) {
-    if (sensibilidade == 'sensivel') return 80;
-    if (sensibilidade == 'resistente') return 20;
-    return 40; // usual
-  }
-
-  static double fatorTDD(String sensibilidade) {
-    if (sensibilidade == 'sensivel') return 0.25;
-    if (sensibilidade == 'resistente') return 0.6;
-    return 0.4;
-  }
-
-  static double roundNearest(double x, double step) =>
-      (x / step).roundToDouble() * step;
-
   static CalcResult calcular({
     required double peso,
     required String sensibilidade,
     required String dieta,
     required String corticoide,
-    required double step,
+    required bool doencaHepatica,
+    double step = 1,
   }) {
-    double tdd = peso * fatorTDD(sensibilidade);
+    double fatorPeso = 0.45;
+    int fs = 40;
 
-    if (corticoide == 'pred_baixa') tdd *= 1.05;
-    if (corticoide == 'pred_media') tdd *= 1.10;
-    if (corticoide == 'pred_alta') tdd *= 1.15;
-
-    double basal = 0, prandial = 0;
-    if (dieta == 'oral') {
-      basal = tdd * 0.5;
-      prandial = tdd * 0.5;
-    } else if (dieta == 'npo' || dieta == 'enteral') {
-      basal = tdd * 0.75;
-      prandial = 0;
+    if (sensibilidade == 'sensivel') {
+      fatorPeso = 0.25;
+      fs = 80;
+    } else if (sensibilidade == 'resistente') {
+      fatorPeso = 0.70;
+      fs = 20;
     }
 
-    double basalRounded = roundNearest(basal, step);
-    double prandialPerMeal = prandial > 0
-        ? roundNearest(prandial / 3, step)
-        : 0;
+    double tdd = peso * fatorPeso;
+
+    if (doencaHepatica) {
+      tdd = tdd * 0.80;
+    }
+
+    double cortBoost = 0.0;
+    switch (corticoide) {
+      case 'pred_baixa':
+        cortBoost = 0.05;
+        break;
+      case 'pred_media':
+        cortBoost = 0.10;
+        break;
+      case 'pred_alta':
+        cortBoost = 0.15;
+        break;
+    }
+
+    double basal = 0;
+    double prandialTotal = 0;
+    double prandialRef = 0;
+
+    if (dieta == 'oral' || dieta == 'oral_ba') {
+      basal = tdd * 0.5;
+      prandialTotal = (tdd * 0.5) * (1 + cortBoost);
+      prandialRef = prandialTotal / 3;
+    } else if (dieta == 'oral_ma') {
+      basal = tdd * 0.6;
+      prandialTotal = (tdd * 0.4) * (1 + cortBoost);
+      prandialRef = 0;
+    } else if (dieta == 'enteral') {
+      basal = tdd * 0.5;
+      prandialTotal = (tdd * 0.5) * (1 + cortBoost);
+      prandialRef = prandialTotal / 4;
+    } else {
+      basal = tdd * 0.75;
+      prandialTotal = 0;
+      prandialRef = 0;
+    }
+
+    double roundTo(double value) {
+      if (step == 2) {
+        return (value / step).ceil() * step;
+      }
+      return ((value / step).round()) * step;
+    }
 
     return CalcResult(
       tdd: tdd,
-      basal: basal,
-      prandial: prandial,
-      basalRounded: basalRounded,
-      prandialPerMealRounded: prandialPerMeal,
-      fs: fatorSensibilidadeCoef(sensibilidade),
+      basalRounded: roundTo(basal),
+      prandialTotal: prandialTotal,
+      prandialRef: roundTo(prandialRef),
+      step: step,
+      fatorSensibilidade: fs,
     );
+  }
+
+  static double calculateCKDEPI(double creatinina, int idade, String sexo) {
+    if (creatinina <= 0) return 0;
+    double k = (sexo == 'F') ? 0.7 : 0.9;
+    double a = (sexo == 'F') ? -0.241 : -0.302;
+    double minPart = min(creatinina / k, 1);
+    double maxPart = max(creatinina / k, 1);
+
+    double eGFR =
+        142 *
+        pow(minPart, a) *
+        pow(maxPart, -1.200) *
+        pow(0.9938, idade) *
+        ((sexo == 'F') ? 1.012 : 1);
+
+    return eGFR;
   }
 }

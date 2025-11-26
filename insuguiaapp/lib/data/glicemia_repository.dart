@@ -1,28 +1,32 @@
 import 'package:sqflite/sqflite.dart';
+import './db_provider.dart';
 import '../models/glicemia.dart';
-import 'db_provider.dart';
 
 class GlicemiaRepository {
-  final DBProvider _dbProvider = DBProvider();
-
   Future<int> inserir(Glicemia g) async {
-    final db = await _dbProvider.database;
-    return await db.insert('glicemias', g.toMap());
+    final db = await DBProvider().database;
+    return await db.insert(
+      'glicemias',
+      g.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   Future<List<Glicemia>> listarPorPaciente(int pacienteId) async {
-    final db = await _dbProvider.database;
-    final maps = await db.query(
+    final db = await DBProvider().database;
+
+    final res = await db.query(
       'glicemias',
       where: 'paciente_id = ?',
-      orderBy: 'criado_em DESC',
       whereArgs: [pacienteId],
+      orderBy: 'id DESC',
     );
-    return maps.map((m) => Glicemia.fromMap(m)).toList();
+
+    return res.map((json) => Glicemia.fromMap(json)).toList();
   }
 
   Future<int> deletar(int id) async {
-    final db = await _dbProvider.database;
+    final db = await DBProvider().database;
     return await db.delete('glicemias', where: 'id = ?', whereArgs: [id]);
   }
 }

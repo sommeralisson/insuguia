@@ -4,8 +4,11 @@ class Paciente {
   String sexo;
   int idade;
   double peso;
-  double altura;
+  int altura;
   double creatinina;
+
+  String localInternacao;
+  String classificacaoClinica;
   String sensibilidade;
 
   Paciente({
@@ -16,30 +19,38 @@ class Paciente {
     required this.peso,
     required this.altura,
     required this.creatinina,
+    required this.localInternacao,
+    required this.classificacaoClinica,
     required this.sensibilidade,
   });
 
-  /// Converte um objeto Paciente em um Map.
-  /// Usado para inserir/atualizar dados no banco de dados.
-  Map<String, dynamic> toMap() => {
-    'id': id,
-    'nome': nome,
-    'sexo': sexo,
-    'idade': idade,
-    'peso': peso,
-    'altura': altura,
-    'creatinina': creatinina,
-    'sensibilidade': sensibilidade,
-  };
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'nome': nome,
+      'sexo': sexo,
+      'idade': idade,
+      'peso': peso,
+      'altura': altura,
+      'creatinina': creatinina,
+      'local_internacao': localInternacao,
+      'classificacao_clinica': classificacaoClinica,
+      'sensibilidade': sensibilidade,
+    };
+  }
 
-  factory Paciente.fromMap(Map<String, dynamic> map) => Paciente(
-    id: map['id'],
-    nome: map['nome'],
-    sexo: map['sexo'],
-    idade: map['idade'],
-    peso: map['peso'],
-    altura: map['altura'],
-    creatinina: map['creatinina'],
-    sensibilidade: map['sensibilidade'],
-  );
+  factory Paciente.fromMap(Map<String, dynamic> map) {
+    return Paciente(
+      id: map['id'],
+      nome: map['nome'],
+      sexo: map['sexo'],
+      idade: map['idade'],
+      peso: map['peso'],
+      altura: map['altura'],
+      creatinina: map['creatinina'],
+      localInternacao: map['local_internacao'],
+      classificacaoClinica: map['classificacao_clinica'],
+      sensibilidade: map['sensibilidade'],
+    );
+  }
 }

@@ -14,7 +14,6 @@ class PacientesScreen extends StatefulWidget {
 }
 
 class _PacientesScreenState extends State<PacientesScreen> {
-  // 1. Em vez de inicializar agora, marque como 'late final'
   late final PacienteRepository repo;
 
   final nomeCtrl = TextEditingController();
@@ -22,47 +21,41 @@ class _PacientesScreenState extends State<PacientesScreen> {
   final pesoCtrl = TextEditingController();
   final alturaCtrl = TextEditingController();
   final creatininaCtrl = TextEditingController();
+  final localCtrl = TextEditingController();
 
   String sexo = 'M';
   String sensibilidade = 'usual';
+  String classificacao = 'nao_critico';
+
   List<Paciente> pacientes = [];
 
   @override
   void initState() {
     super.initState();
-    // 2. Inicialize o repositório AQUI, dentro do initState.
-    //    Neste ponto, o FFI do main.dart já foi executado.
     repo = PacienteRepository();
-
-    // 3. Agora podemos carregar os dados com segurança.
     _load();
   }
 
   Future<void> _load() async {
-    // Adicionado um try-catch por segurança
     try {
       final data = await repo.listar();
       setState(() => pacientes = data);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao carregar pacientes: $e')),
-        );
-      }
-    }
+    } catch (_) {}
   }
 
   Future<void> _salvar() async {
-    if (nomeCtrl.text.isEmpty || pesoCtrl.text.isEmpty) return;
+    if (nomeCtrl.text.isEmpty) return;
 
     await repo.inserir(
       Paciente(
         nome: nomeCtrl.text,
         sexo: sexo,
         idade: int.tryParse(idadeCtrl.text) ?? 0,
-        peso: double.tryParse(pesoCtrl.text) ?? 0,
-        altura: double.tryParse(alturaCtrl.text) ?? 0,
-        creatinina: double.tryParse(creatininaCtrl.text) ?? 0,
+        peso: double.tryParse(pesoCtrl.text) ?? 0.0,
+        altura: int.tryParse(alturaCtrl.text) ?? 0,
+        creatinina: double.tryParse(creatininaCtrl.text) ?? 0.0,
+        localInternacao: localCtrl.text,
+        classificacaoClinica: classificacao,
         sensibilidade: sensibilidade,
       ),
     );
@@ -72,13 +65,15 @@ class _PacientesScreenState extends State<PacientesScreen> {
     pesoCtrl.clear();
     alturaCtrl.clear();
     creatininaCtrl.clear();
+    localCtrl.clear();
+
+    _load();
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Paciente salvo com sucesso!')),
       );
     }
-    _load();
   }
 
   Future<void> _deletar(int id) async {
@@ -86,15 +81,15 @@ class _PacientesScreenState extends State<PacientesScreen> {
     _load();
   }
 
-  void _abrirOpcoesPaciente(Paciente p) {
+  void _abrirOpcoes(Paciente p) {
     showModalBottomSheet(
       context: context,
       builder: (ctx) => SafeArea(
         child: Wrap(
           children: [
             ListTile(
-              leading: const Icon(Icons.description_outlined),
-              title: const Text('Ver Prescrição'),
+              leading: const Icon(Icons.description),
+              title: const Text("Ver Prescrição"),
               onTap: () {
                 Navigator.pop(ctx);
                 Navigator.push(
@@ -107,7 +102,7 @@ class _PacientesScreenState extends State<PacientesScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.monitor_heart),
-              title: const Text('Acompanhamento Glicêmico'),
+              title: const Text("Acompanhamento Glicêmico"),
               onTap: () {
                 Navigator.pop(ctx);
                 Navigator.push(
@@ -120,7 +115,7 @@ class _PacientesScreenState extends State<PacientesScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.delete, color: Colors.red),
-              title: const Text('Excluir Paciente'),
+              title: const Text("Excluir"),
               onTap: () {
                 Navigator.pop(ctx);
                 _deletar(p.id!);
@@ -135,125 +130,183 @@ class _PacientesScreenState extends State<PacientesScreen> {
   @override
   Widget build(BuildContext context) {
     final medico = widget.medico;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-            'Pacientes - Dr(a). ${medico.nome.split(" ").first}'), // Mostra só o primeiro nome
+        title: Text("Pacientes - Dr(a). ${medico.nome.split(" ").first}"),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
+          IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
         ],
       ),
-      body: Padding(
+      body: ListView(
         padding: const EdgeInsets.all(16),
-        // Convertido para ListView para o formulário ficar acima da lista
-        child: ListView(
-          children: [
-            const Text(
-              'Novo Paciente',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: nomeCtrl,
-              decoration: const InputDecoration(labelText: 'Nome completo'),
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: sexo,
-                    decoration: const InputDecoration(labelText: 'Sexo'),
-                    items: const [
-                      DropdownMenuItem(value: 'M', child: Text('Masculino')),
-                      DropdownMenuItem(value: 'F', child: Text('Feminino')),
-                    ],
-                    onChanged: (v) => setState(() => sexo = v!),
-                  ),
+        children: [
+          const Text(
+            "Novo Paciente",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+          ),
+          const SizedBox(height: 12),
+
+          TextField(
+            controller: nomeCtrl,
+            decoration: const InputDecoration(labelText: "Nome completo"),
+          ),
+
+          const SizedBox(height: 12),
+
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField(
+                  value: sexo,
+                  items: const [
+                    DropdownMenuItem(value: "M", child: Text("Masculino")),
+                    DropdownMenuItem(value: "F", child: Text("Feminino")),
+                  ],
+                  onChanged: (v) => setState(() => sexo = v!),
+                  decoration: const InputDecoration(labelText: "Sexo"),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: sensibilidade,
-                    decoration: const InputDecoration(
-                      labelText: 'Sensibilidade',
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'sensivel',
-                        child: Text('Sensível'),
-                      ),
-                      DropdownMenuItem(value: 'usual', child: Text('Usual')),
-                      DropdownMenuItem(
-                        value: 'resistente',
-                        child: Text('Resistente'),
-                      ),
-                    ],
-                    onChanged: (v) => setState(() => sensibilidade = v!),
-                  ),
-                ),
-              ],
-            ),
-            TextField(
-              controller: idadeCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Idade (anos)'),
-            ),
-            TextField(
-              controller: pesoCtrl,
-              keyboardType: TextInputType.number, // <<--- CORRIGIDO AQUI
-              decoration: const InputDecoration(labelText: 'Peso (kg)'),
-            ),
-            TextField(
-              controller: alturaCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Altura (m)'),
-            ),
-            TextField(
-              controller: creatininaCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Creatinina (mg/dL)',
               ),
-            ),
-            const SizedBox(height: 12),
-            ElevatedButton.icon(
-              onPressed: _salvar,
-              icon: const Icon(Icons.save),
-              label: const Text('Salvar Paciente'),
-            ),
-            const Divider(height: 32),
-            const Text(
-              'Pacientes Cadastrados',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            pacientes.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.all(32),
-                    child: Center(
-                      child: Text('Nenhum paciente cadastrado ainda.'),
+              const SizedBox(width: 16),
+              Expanded(
+                child: DropdownButtonFormField(
+                  value: sensibilidade,
+                  items: const [
+                    DropdownMenuItem(
+                      value: "sensivel",
+                      child: Text("Sensível"),
                     ),
-                  )
-                // Usei um Column+shrinkWrap para a lista dentro de outra lista
-                : ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: pacientes.length,
-                    itemBuilder: (_, i) {
-                      final p = pacientes[i];
-                      return Card(
-                        child: ListTile(
-                          title: Text(p.nome),
-                          subtitle: Text(
-                            '${p.idade} anos • ${p.peso} kg • ${p.sensibilidade}',
-                          ),
-                          onTap: () => _abrirOpcoesPaciente(p),
-                        ),
-                      );
-                    },
+                    DropdownMenuItem(value: "usual", child: Text("Usual")),
+                    DropdownMenuItem(
+                      value: "resistente",
+                      child: Text("Resistente"),
+                    ),
+                  ],
+                  onChanged: (v) => setState(() => sensibilidade = v!),
+                  decoration: const InputDecoration(labelText: "Sensibilidade"),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: idadeCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: "Idade (anos)"),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: TextField(
+                  controller: pesoCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: "Peso (kg)"),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: alturaCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: "Altura (cm)"),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: TextField(
+                  controller: creatininaCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: "Creatinina (mg/dL)",
                   ),
-          ],
-        ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          TextField(
+            controller: localCtrl,
+            decoration: const InputDecoration(labelText: "Local de Internação"),
+          ),
+
+          const SizedBox(height: 12),
+
+          DropdownButtonFormField(
+            value: classificacao,
+            isExpanded: true,
+            items: const [
+              DropdownMenuItem(
+                value: "nao_critico",
+                child: Text("Não crítico (DM/Hiperglicemia hospitalar)"),
+              ),
+              DropdownMenuItem(value: "gestante", child: Text("Gestante")),
+              DropdownMenuItem(
+                value: "critico",
+                child: Text("Paciente crítico"),
+              ),
+              DropdownMenuItem(
+                value: "paliativo",
+                child: Text("Cuidados paliativos"),
+              ),
+              DropdownMenuItem(value: "periop", child: Text("Perioperatório")),
+            ],
+            decoration: const InputDecoration(
+              labelText: "Classificação Clínica",
+            ),
+            onChanged: (v) => setState(() => classificacao = v!),
+          ),
+
+          const SizedBox(height: 20),
+
+          ElevatedButton.icon(
+            icon: const Icon(Icons.save),
+            label: const Text("Salvar Paciente"),
+            onPressed: _salvar,
+          ),
+
+          const SizedBox(height: 32),
+          const Text(
+            "Pacientes cadastrados",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+          ),
+          const SizedBox(height: 8),
+
+          pacientes.isEmpty
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32),
+                    child: Text("Nenhum paciente cadastrado."),
+                  ),
+                )
+              : ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: pacientes.length,
+                  itemBuilder: (_, i) {
+                    final p = pacientes[i];
+                    return Card(
+                      child: ListTile(
+                        title: Text(p.nome),
+                        subtitle: Text("${p.idade} anos • ${p.peso} kg"),
+                        onTap: () => _abrirOpcoes(p),
+                      ),
+                    );
+                  },
+                ),
+        ],
       ),
     );
   }

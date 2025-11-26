@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../data/glicemia_repository.dart';
 import '../models/glicemia.dart';
 import '../models/paciente.dart';
@@ -52,20 +53,72 @@ class _AcompanhamentoScreenState extends State<AcompanhamentoScreen> {
     return '🔴 Glicemia >250 mg/dl: revisar esquema basal/bôlus e considerar ajuste.';
   }
 
+  Widget _graficoGlicemias() {
+    if (glicemias.isEmpty) {
+      return const SizedBox(
+        height: 200,
+        child: Center(child: Text("Sem dados suficientes para o gráfico")),
+      );
+    }
+
+    final spots = glicemias
+        .asMap()
+        .entries
+        .map((e) {
+          final index = e.key;
+          final g = e.value;
+          return FlSpot(index.toDouble(), g.valor.toDouble());
+        })
+        .toList()
+        .reversed
+        .toList();
+
+    return SizedBox(
+      height: 250,
+      child: LineChart(
+        LineChartData(
+          minY: 0,
+          maxY:
+              (glicemias.map((g) => g.valor).reduce((a, b) => a > b ? a : b) +
+                      20)
+                  .toDouble(),
+          titlesData: FlTitlesData(
+            bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          ),
+          gridData: FlGridData(show: true),
+          lineBarsData: [
+            LineChartBarData(
+              spots: spots,
+              isCurved: true,
+              barWidth: 3,
+              dotData: FlDotData(show: true),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = widget.paciente;
+
     return Scaffold(
       appBar: AppBar(title: Text('Acompanhamento - ${p.nome}')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
+            _graficoGlicemias(),
+
+            const SizedBox(height: 20),
+
             const Text(
               'Registrar glicemia capilar',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
             const SizedBox(height: 8),
+
             TextField(
               controller: _valorCtrl,
               keyboardType: TextInputType.number,
@@ -74,7 +127,9 @@ class _AcompanhamentoScreenState extends State<AcompanhamentoScreen> {
                 prefixIcon: Icon(Icons.bloodtype),
               ),
             ),
+
             const SizedBox(height: 8),
+
             DropdownButton<String>(
               value: tipo,
               onChanged: (v) => setState(() => tipo = v!),
@@ -91,13 +146,17 @@ class _AcompanhamentoScreenState extends State<AcompanhamentoScreen> {
                 DropdownMenuItem(value: '22h', child: Text('22 horas')),
               ],
             ),
+
             const SizedBox(height: 12),
+
             ElevatedButton.icon(
               onPressed: _salvar,
               icon: const Icon(Icons.save),
               label: const Text('Registrar'),
             ),
+
             const Divider(height: 24),
+
             Expanded(
               child: glicemias.isEmpty
                   ? const Center(child: Text('Nenhum registro ainda'))
@@ -109,6 +168,7 @@ class _AcompanhamentoScreenState extends State<AcompanhamentoScreen> {
                         final color = g.valor < 70
                             ? Colors.orange
                             : (g.valor > 250 ? Colors.red : Colors.green);
+
                         return Card(
                           child: ListTile(
                             title: Text('${g.valor} mg/dl (${g.tipo})'),
